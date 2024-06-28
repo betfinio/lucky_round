@@ -3,16 +3,19 @@ pragma solidity ^0.8.0;
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
-import "openzeppelin/token/ERC20/ERC20.sol";
-import "../src/CoreInterface.sol";
+import "../src/shared/Token.sol";
+import "../src/shared/Core.sol";
+import "../src/shared/staking/StakingInterface.sol";
 import "../src/LuckyRound.sol";
-import "../src/Token.sol";
 
 contract LuckyRoundTest is Test {
     Token public token;
+    address public staking = address(999000999000);
+    Core public core;
     LuckyRound public luckyRound;
-    address public staking;
-    address public core = address(234234234000);
+    Partner public partner;
+    BetsMemory public betsMemory;
+    Pass public pass;
     address public affiliate = address(128911982379182361);
 
     address public alice = address(1);
@@ -22,22 +25,41 @@ contract LuckyRoundTest is Test {
     address public eve = address(5);
 
     function setUp() public {
-        token = new Token(address(this));
+        pass = new Pass(address(this));
+        pass.grantRole(pass.TIMELOCK(), address(this));
+        pass.setAffiliate(affiliate);
         vm.mockCall(
-            address(core),
-            abi.encodeWithSelector(CoreInterface.token.selector),
-            abi.encode(address(token))
-        );
-        vm.mockCall(
-            address(core),
-            abi.encodeWithSelector(CoreInterface.isStaking.selector),
+            affiliate,
+            abi.encodeWithSelector(
+                AffiliateInterface.checkInviteCondition.selector,
+                address(1)
+            ),
             abi.encode(true)
         );
         vm.mockCall(
-            address(core),
-            abi.encodeWithSelector(CoreInterface.fee.selector),
-            abi.encode(3_60)
+            address(pass),
+            abi.encodeWithSelector(AffiliateMember.getInviter.selector, alice),
+            abi.encode(address(0))
         );
+        pass.mint(alice, address(0), address(0));
+
+        token = new Token(address(this));
+        betsMemory = new BetsMemory(address(this));
+        betsMemory.grantRole(betsMemory.TIMELOCK(), address(this));
+        betsMemory.setPass(address(pass));
+        core = new Core(
+            address(token),
+            address(betsMemory),
+            address(pass),
+            address(this)
+        );
+        core.grantRole(core.TIMELOCK(), address(this));
+        vm.mockCall(
+            address(staking),
+            abi.encodeWithSelector(StakingInterface.getAddress.selector),
+            abi.encode(address(staking))
+        );
+        core.addStaking(address(staking));
         luckyRound = new LuckyRound(
             address(core),
             address(staking),
@@ -46,7 +68,17 @@ contract LuckyRoundTest is Test {
             0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed,
             0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f
         );
+        core.addGame(address(luckyRound));
+        betsMemory.addAggregator(address(core));
+        luckyRound.grantRole(luckyRound.TIMELOCK(), address(this));
+        address tariff = core.addTariff(0, 1_00, 0);
+        vm.startPrank(carol);
+        partner = Partner(core.addPartner(tariff));
+        vm.stopPrank();
         for (uint160 i = 1; i <= 100; i++) {
+            if (i > 1) {
+                pass.mint(address(i), alice, alice);
+            }
             token.transfer(address(i), 1000 ether);
         }
     }
@@ -72,15 +104,15 @@ contract LuckyRoundTest is Test {
             abi.encode(requestId)
         );
     }
-
     function placeBet(
         address player,
         uint256 amount,
         uint256 round
     ) private returns (address) {
         vm.startPrank(player);
-        address bet = luckyRound.placeBet(
-            player,
+        token.approve(address(core), amount * 1 ether);
+        address bet = partner.placeBet(
+            address(luckyRound),
             amount * 1 ether,
             abi.encode(player, amount, round)
         );
@@ -101,18 +133,26 @@ contract LuckyRoundTest is Test {
         vm.startPrank(alice);
         token.approve(address(core), 1000 ether);
         vm.expectRevert(bytes("L03"));
-        luckyRound.placeBet(
-            alice,
+        partner.placeBet(
+            address(luckyRound),
             100 ether,
             abi.encode(alice, 100 ether, round)
         );
         vm.expectRevert(bytes("L02"));
-        luckyRound.placeBet(alice, 100 ether, abi.encode(bob, 100, round));
+        partner.placeBet(
+            address(luckyRound),
+            100 ether,
+            abi.encode(bob, 100, round)
+        );
         vm.expectRevert(bytes("L05"));
-        luckyRound.placeBet(alice, 100 ether, abi.encode(alice, 100, round));
+        partner.placeBet(
+            address(luckyRound),
+            100 ether,
+            abi.encode(alice, 100, round)
+        );
         vm.expectRevert(bytes("L04"));
-        luckyRound.placeBet(
-            alice,
+        partner.placeBet(
+            address(luckyRound),
             1000 ether,
             abi.encode(alice, 1000, round - 1)
         );
@@ -158,7 +198,6 @@ contract LuckyRoundTest is Test {
             assertEq(bet.getEndOffset(), (i - 1) * 1000 + 1000);
         }
         assertEq(luckyRound.roundBank(round), 1000 ether * 100);
-        assertEq(token.balanceOf(address(luckyRound)), 1000 ether * 100);
         assertEq(luckyRound.getBetsCount(round), 100);
     }
 
@@ -178,7 +217,11 @@ contract LuckyRoundTest is Test {
         vm.startPrank(alice);
         token.approve(address(core), 1000 ether);
         vm.expectRevert(bytes("L07"));
-        placeBet(alice, 1000, round);
+        partner.placeBet(
+            address(luckyRound),
+            1000 ether,
+            abi.encode(alice, 1000, round)
+        );
         assertEq(luckyRound.getBetsCount(round), 1000);
         vm.stopPrank();
 
@@ -218,8 +261,6 @@ contract LuckyRoundTest is Test {
         uint256 round = luckyRound.getCurrentRound();
         for (uint160 i = 0; i < 1000; i++) {
             token.transfer(alice, 1000 ether);
-            vm.startPrank(alice);
-            token.approve(core, 1000 ether);
             placeBet(alice, 1000, round);
         }
         assertEq(luckyRound.getBetsCount(round), 1000);
@@ -243,9 +284,9 @@ contract LuckyRoundTest is Test {
         assertEq(luckyRound.roundStatus(round), 2);
         assertEq(token.balanceOf(alice), 924000 ether + 1000 ether);
         // assertApproxEqAbs(luckyRound.claimableBonus(alice), 40000 ether, 500);
-        // vm.startPrank(alice);
-        // luckyRound.claimBonus(alice);
-        // vm.stopPrank();
+        vm.startPrank(alice);
+        luckyRound.claimBonus(alice);
+        vm.stopPrank();
         // assertApproxEqAbs(
         //     token.balanceOf(alice),
         //     924000 ether + 1000 ether + 40000 ether,

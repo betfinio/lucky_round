@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "openzeppelin/access/Ownable.sol";
-import "./BetInterface.sol";
+import "./shared/BetInterface.sol";
 
 contract LuckyRoundBet is Ownable, BetInterface {
     address private player;

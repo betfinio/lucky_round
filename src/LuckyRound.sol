@@ -5,9 +5,11 @@ import "chainlink/vrf/dev/VRFCoordinatorV2_5.sol";
 import "chainlink/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import "openzeppelin/access/AccessControl.sol";
 import "openzeppelin/token/ERC20/ERC20.sol";
-import "./CoreInterface.sol";
-import "./GameInterface.sol";
+import "./shared/CoreInterface.sol";
+import "./shared/games/GameInterface.sol";
 import "./LuckyRoundBet.sol";
+
+
 /**
  * Errors used in this contract
  *
