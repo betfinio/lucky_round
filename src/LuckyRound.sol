@@ -220,14 +220,6 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         roundStatus[round] = 2;
     }
 
-    function manualFulfill(
-        uint256 requestId,
-        uint256[] calldata randomWords
-    ) external {
-        fulfillRandomWords(requestId, randomWords);
-        // for test purposes
-    }
-
     function executeResult(uint256 round) internal {
         uint256 winnerOffset = roundWinners[round];
         LuckyRoundBet[] storage bets = roundBets[round];

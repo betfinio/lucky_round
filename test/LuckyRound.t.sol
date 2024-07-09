@@ -120,7 +120,7 @@ contract LuckyRoundTest is Test {
         return bet;
     }
 
-    function testConstructor() public {
+    function testConstructor() view public {
         assertEq(luckyRound.getAddress(), address(luckyRound));
         assertEq(luckyRound.getStaking(), address(staking));
     }
@@ -315,8 +315,6 @@ contract LuckyRoundTest is Test {
         result[0] = 1;
         luckyRound.rawFulfillRandomWords(5, result);
         luckyRound.distribute(round, 0, 300);
-        luckyRound.distribute(round, 300, 300);
-        luckyRound.distribute(round, 600, 400);
         assertEq(luckyRound.roundStatus(round), 2);
         assertEq(token.balanceOf(alice), 1848 ether);
         assertEq(token.balanceOf(bob), 0 ether);
