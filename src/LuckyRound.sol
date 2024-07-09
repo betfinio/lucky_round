@@ -9,7 +9,6 @@ import "./shared/CoreInterface.sol";
 import "./shared/games/GameInterface.sol";
 import "./LuckyRoundBet.sol";
 
-
 /**
  * Errors used in this contract
  *
@@ -40,7 +39,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
     address public immutable token;
     address public immutable staking;
 
-    uint64 private immutable subscriptionId;
+    uint256 private immutable subscriptionId;
     address public immutable vrfCoordinator;
     bytes32 public immutable keyHash;
 
@@ -69,6 +68,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
     mapping(uint256 => uint8) public roundStatus;
     mapping(uint256 => uint256) public roundWinners;
     mapping(uint256 => bool) public roundDistribution;
+    mapping(uint256 => uint256) public distributedBetCount;
     mapping(uint256 => mapping(address => bool)) public roundBetDistributed;
 
     mapping(uint256 => uint256) public lastOffset;
@@ -89,11 +89,13 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         uint256 amount
     );
 
+    event RoundStart(uint256 indexed round, uint256 indexed timestamp);
+
     constructor(
         address _core,
         address _staking,
         address _admin,
-        uint64 _subscriptionId,
+        uint256 _subscriptionId,
         address _vrfCoordinator,
         bytes32 _keyHash
     ) VRFConsumerBaseV2Plus(_vrfCoordinator) {
@@ -174,6 +176,9 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         }
         betsPlayer[address(bet)] = player;
         emit BetCreated(player, round, _totalAmount);
+        if (getBetsCount(round) == 1) {
+            emit RoundStart(round, block.timestamp);
+        }
         return address(bet);
     }
 
@@ -272,6 +277,10 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
             claimableBonus[player] += playerBonus;
             roundBetDistributed[round][address(bet)] = true;
             bet.setResult(winnerOffset);
+            distributedBetCount[round]++;
+        }
+        if (distributedBetCount[round] == roundBets[round].length) {
+            roundDistribution[round] = true;
         }
     }
 
