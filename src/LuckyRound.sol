@@ -4,7 +4,8 @@ pragma solidity 0.8.19;
 import "chainlink/vrf/dev/VRFCoordinatorV2_5.sol";
 import "chainlink/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import "openzeppelin/access/AccessControl.sol";
-import "openzeppelin/token/ERC20/ERC20.sol";
+import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/security/ReentrancyGuard.sol";
 import "./shared/CoreInterface.sol";
 import "./shared/games/GameInterface.sol";
@@ -33,6 +34,8 @@ contract LuckyRound is
     VRFConsumerBaseV2Plus,
     ReentrancyGuard
 {
+    using SafeERC20 for IERC20;
+
     bytes32 public constant TIMELOCK = keccak256("TIMELOCK");
     bytes32 public constant SERVICE = keccak256("SERVICE");
     uint256 public constant ROUND_DURATION = 10 minutes;
@@ -248,7 +251,7 @@ contract LuckyRound is
                 // calculate reward
                 uint reward = bank - ((bank * fee) / 100_00) - bonus;
                 // transfer reward to player
-                ERC20(token).transfer(bet.getPlayer(), reward);
+                IERC20(token).transfer(bet.getPlayer(), reward);
                 emit WinnerCalculated(round, winnerOffset, address(bet));
                 break;
             } else if (start < winnerOffset) {
@@ -291,7 +294,7 @@ contract LuckyRound is
         );
         uint bonus = claimableBonus[player];
         claimableBonus[player] = 0;
-        ERC20(token).transfer(player, bonus);
+        IERC20(token).transfer(player, bonus);
         emit BonusClaimed(player, bonus);
     }
 
