@@ -216,7 +216,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         uint256[] calldata randomWords
     ) internal override {
         uint256 round = requestRounds[requestId];
-        uint256 winnerOffset = (randomWords[0] % (lastOffset[round] - 1)) + 1; // exclude 0
+        uint256 winnerOffset = (randomWords[0] % lastOffset[round]) + 1; // exclude 0
         roundWinners[round] = winnerOffset;
         executeResult(round);
         roundStatus[round] = 2;
