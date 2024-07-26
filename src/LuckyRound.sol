@@ -23,7 +23,8 @@ import "./LuckyRoundBet.sol";
  * L09 - round not finished
  * L10 - round already requested
  * L11 - round is empty
- * L12 - round is not finished
+ * L12 - round is not finished,
+ * L13 - only core can place bets
  */
 contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
     bytes32 public constant TIMELOCK = keccak256("TIMELOCK");
@@ -127,6 +128,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         uint256 _totalAmount,
         bytes calldata _data
     ) external override returns (address) {
+        require(msg.sender == core, "L13");
         // parse data
         (address player, uint256 amount, uint256 round) = abi.decode(
             _data,

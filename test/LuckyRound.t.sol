@@ -389,4 +389,13 @@ contract LuckyRoundTest is Test {
         vm.expectRevert(bytes("L12"));
         luckyRound.distribute(round, 0, 100);
     }
+
+    function testOnlyCore_placeBet() public {
+         // warp to 26/03/2024 11:00:00
+        vm.warp(1711450800);
+        uint256 round = luckyRound.getCurrentRound();
+        bytes memory data = abi.encode(alice, 500, round);
+        vm.expectRevert(bytes("L13"));
+        luckyRound.placeBet(alice, 500 ether, data);
+    }
 }
