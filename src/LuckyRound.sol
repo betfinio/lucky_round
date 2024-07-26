@@ -5,6 +5,7 @@ import "chainlink/vrf/dev/VRFCoordinatorV2_5.sol";
 import "chainlink/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import "openzeppelin/access/AccessControl.sol";
 import "openzeppelin/token/ERC20/ERC20.sol";
+import "openzeppelin/security/ReentrancyGuard.sol";
 import "./shared/CoreInterface.sol";
 import "./shared/games/GameInterface.sol";
 import "./LuckyRoundBet.sol";
@@ -26,7 +27,12 @@ import "./LuckyRoundBet.sol";
  * L12 - round is not finished,
  * L13 - only core can place bets
  */
-contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
+contract LuckyRound is
+    AccessControl,
+    GameInterface,
+    VRFConsumerBaseV2Plus,
+    ReentrancyGuard
+{
     bytes32 public constant TIMELOCK = keccak256("TIMELOCK");
     bytes32 public constant SERVICE = keccak256("SERVICE");
     uint256 public constant ROUND_DURATION = 10 minutes;
@@ -173,10 +179,10 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         // update round's bank
         roundBank[round] += _totalAmount;
         roundBonusShares[round] += roundBank[round];
+        betsPlayer[address(bet)] = player;
         if (getBetsCount(round) == BETS_LIMIT) {
             requestCalculationInternal(round);
         }
-        betsPlayer[address(bet)] = player;
         emit BetCreated(player, round, _totalAmount);
         if (getBetsCount(round) == 1) {
             emit RoundStart(round, block.timestamp);
@@ -191,7 +197,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         requestCalculationInternal(round);
     }
 
-    function requestCalculationInternal(uint256 round) internal {
+    function requestCalculationInternal(uint256 round) internal nonReentrant {
         uint256 requestId = VRFCoordinatorV2_5(vrfCoordinator)
             .requestRandomWords(
                 VRFV2PlusClient.RandomWordsRequest({
@@ -222,7 +228,7 @@ contract LuckyRound is AccessControl, GameInterface, VRFConsumerBaseV2Plus {
         roundStatus[round] = 2;
     }
 
-    function executeResult(uint256 round) internal {
+    function executeResult(uint256 round) internal nonReentrant {
         uint256 winnerOffset = roundWinners[round];
         LuckyRoundBet[] storage bets = roundBets[round];
         // find using binary search
