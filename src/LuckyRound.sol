@@ -299,7 +299,7 @@ contract LuckyRound is
     }
 
     function addService(address _service) external onlyRole(TIMELOCK) {
-        grantRole(SERVICE, _service);
+        _grantRole(SERVICE, _service);
     }
 
     function getCurrentRound() public view returns (uint256) {
