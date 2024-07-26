@@ -5,19 +5,19 @@ import "openzeppelin/access/Ownable.sol";
 import "./shared/BetInterface.sol";
 
 contract LuckyRoundBet is Ownable, BetInterface {
-    address private player;
-    address private game;
-    uint256 private amount;
+    address private immutable player;
+    address private immutable game;
+    uint256 private immutable amount;
     uint256 private immutable created;
 
     // 1 - registered
     // 2 - won
     // 3 - lost
     uint256 private status;
-    uint256 private round;
     uint256 private result;
-    uint256 private startOffset;
-    uint256 private endOffset;
+    uint256 private immutable round;
+    uint256 private immutable startOffset;
+    uint256 private immutable endOffset;
 
     constructor(
         address _player,
