@@ -254,7 +254,7 @@ contract LuckyRound is
                 IERC20(token).transfer(bet.getPlayer(), reward);
                 emit WinnerCalculated(round, winnerOffset, address(bet));
                 break;
-            } else if (start < winnerOffset) {
+            } else if (end < winnerOffset) {
                 low = mid + 1;
             } else {
                 high = mid - 1;
