@@ -27,6 +27,7 @@ import "./LuckyRoundBet.sol";
  * L11 - round is empty
  * L12 - round is not finished,
  * L13 - only core can place bets
+ * L14 - error when tranfering tokens
  */
 contract LuckyRound is
     AccessControl,
@@ -251,7 +252,7 @@ contract LuckyRound is
                 // calculate reward
                 uint reward = bank - ((bank * fee) / 100_00) - bonus;
                 // transfer reward to player
-                IERC20(token).transfer(bet.getPlayer(), reward);
+                require(IERC20(token).transfer(bet.getPlayer(), reward), "L14");
                 emit WinnerCalculated(round, winnerOffset, address(bet));
                 break;
             } else if (end < winnerOffset) {
@@ -294,7 +295,7 @@ contract LuckyRound is
         );
         uint bonus = claimableBonus[player];
         claimableBonus[player] = 0;
-        IERC20(token).transfer(player, bonus);
+        require(IERC20(token).transfer(player, bonus), "L14");
         emit BonusClaimed(player, bonus);
     }
 
