@@ -39,9 +39,9 @@ contract LuckyRound is
 
     bytes32 public constant TIMELOCK = keccak256("TIMELOCK");
     bytes32 public constant SERVICE = keccak256("SERVICE");
-    uint256 public constant ROUND_DURATION = 10 minutes;
+    uint256 public constant ROUND_DURATION = 1 days;
     uint256 public constant BETS_LIMIT = 1000;
-    uint256 public constant BONUS = 4_00;
+    uint256 public constant BONUS = 5_00;
 
     uint256 public MIN_BET_AMOUNT = 1000 ether;
 
@@ -304,7 +304,7 @@ contract LuckyRound is
     }
 
     function getCurrentRound() public view returns (uint256) {
-        return block.timestamp / ROUND_DURATION;
+        return (block.timestamp + 6 hours) / ROUND_DURATION;
     }
 
     function getAddress() public view override returns (address) {

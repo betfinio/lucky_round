@@ -120,7 +120,7 @@ contract LuckyRoundTest is Test {
         return bet;
     }
 
-    function testConstructor() view public {
+    function testConstructor() public view {
         assertEq(luckyRound.getAddress(), address(luckyRound));
         assertEq(luckyRound.getStaking(), address(staking));
     }
@@ -128,7 +128,7 @@ contract LuckyRoundTest is Test {
     function testBrokenBet() public {
         // warp to 26/03/2024 11:00:00
         vm.warp(1711450800);
-        uint256 round = 2852418;
+        uint256 round = (uint256(1711450800) + 6 hours) / 1 days;
         assertEq(luckyRound.getCurrentRound(), round);
         vm.startPrank(alice);
         token.approve(address(core), 1000 ether);
@@ -237,7 +237,7 @@ contract LuckyRoundTest is Test {
         placeBet(alice, 1000, round);
 
         // warp to 26/03/2024 11:10:00
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 1 days);
         assertEq(luckyRound.getCurrentRound(), round + 1);
 
         // request calculation
@@ -266,7 +266,7 @@ contract LuckyRoundTest is Test {
         assertEq(luckyRound.getBetsCount(round), 1000);
         assertEq(luckyRound.roundBank(round), 1000 ether * 1000);
         // warp to 26/03/2024 11:10:00
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 1 days);
         assertEq(luckyRound.getCurrentRound(), round + 1);
 
         assertEq(luckyRound.roundStatus(round), 1);
@@ -283,16 +283,16 @@ contract LuckyRoundTest is Test {
         luckyRound.distribute(round, 600, 400);
         assertEq(luckyRound.roundStatus(round), 2);
         assertEq(token.balanceOf(alice), 924000 ether + 1000 ether);
-        // assertApproxEqAbs(luckyRound.claimableBonus(alice), 40000 ether, 500);
+        assertApproxEqAbs(luckyRound.claimableBonus(alice), 40000 ether, 500);
         vm.startPrank(alice);
         luckyRound.claimBonus(alice);
         vm.stopPrank();
-        // assertApproxEqAbs(
-        //     token.balanceOf(alice),
-        //     924000 ether + 1000 ether + 40000 ether,
-        //     500
-        // );
-        // assertApproxEqAbs(token.balanceOf(address(luckyRound)), 0 ether, 500);
+        assertApproxEqAbs(
+            token.balanceOf(alice),
+            924000 ether + 1000 ether + 40000 ether,
+            500
+        );
+        assertApproxEqAbs(token.balanceOf(address(luckyRound)), 0 ether, 500);
     }
     function testCalculateRound_twoBets() public {
         getRequest(5);
@@ -304,7 +304,7 @@ contract LuckyRoundTest is Test {
         placeBet(bob, 1000, round);
         assertEq(luckyRound.getBetsCount(round), 2);
         // warp to 26/03/2024 11:10:00
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 1 days);
         assertEq(luckyRound.getCurrentRound(), round + 1);
 
         // request calculation
@@ -339,7 +339,7 @@ contract LuckyRoundTest is Test {
 
         assertEq(luckyRound.getBetsCount(round), 200);
         // warp to 26/03/2024 11:10:00
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 1 days);
         assertEq(luckyRound.getCurrentRound(), round + 1);
 
         // request calculation
@@ -377,7 +377,7 @@ contract LuckyRoundTest is Test {
         vm.expectRevert(bytes("L09"));
         luckyRound.distribute(round, 0, 100);
         // warp to 26/03/2024 11:10:00
-        vm.warp(block.timestamp + 10 minutes);
+        vm.warp(block.timestamp + 1 days);
         // distribute before calculation
         vm.expectRevert(bytes("L12"));
         luckyRound.distribute(round, 0, 100);
@@ -391,11 +391,25 @@ contract LuckyRoundTest is Test {
     }
 
     function testOnlyCore_placeBet() public {
-         // warp to 26/03/2024 11:00:00
+        // warp to 26/03/2024 11:00:00
         vm.warp(1711450800);
         uint256 round = luckyRound.getCurrentRound();
         bytes memory data = abi.encode(alice, 500, round);
         vm.expectRevert(bytes("L13"));
         luckyRound.placeBet(alice, 500 ether, data);
+    }
+
+    function testCurrentRound() public {
+        // Tue Aug 06 2024 14:00:00 GMT+0000
+        vm.warp(1722952800);
+        assertEq(19941, luckyRound.getCurrentRound());
+
+        // Tue Aug 06 2024 17:59:59 GMT+0000
+        vm.warp(1722967199);
+        assertEq(19941, luckyRound.getCurrentRound());
+
+        // Tue Aug 06 2024 18:00:00 GMT+0000
+        vm.warp(1722967200);
+        assertEq(19942, luckyRound.getCurrentRound());
     }
 }
